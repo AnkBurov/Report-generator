@@ -3,17 +3,21 @@ package org.github.ankburov.reportgenerator.sourcereporthandler;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.github.ankburov.reportgenerator.settingshandler.AbstractSettingsReader;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Implementation of AbstractSourceReportReader. Reads source file and loads its content into memory
+ */
 public class ReportReader extends AbstractSourceReportReader {
-
+    /**
+     * read source report
+     *
+     * @return two-dimensional list. Represents source report file in memory. Each List<String> is a row
+     */
     @Override
     public List<List<String>> readSourceReport() throws IOException {
         List<List<String>> list = new ArrayList<>();
@@ -21,9 +25,7 @@ public class ReportReader extends AbstractSourceReportReader {
         List<CSVRecord> records = parser.getRecords();
         for (CSVRecord csvRecord : records) {
             List<String> strings = new ArrayList<>();
-
-            //todo улучшить
-            // разбор внутренней и наполнение внешней коллекции
+            // form lists
             for (int i = 0; i < settingsReader.getColumnList().size(); i++) {
                 String string = csvRecord.get(i);
                 strings.add(string);

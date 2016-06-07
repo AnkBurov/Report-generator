@@ -1,5 +1,7 @@
 package org.github.ankburov.reportgenerator.settingshandler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -11,6 +13,7 @@ import java.util.List;
  * Abstract class for reading settings
  */
 public abstract class AbstractSettingsReader {
+    protected static final Logger logger = LoggerFactory.getLogger("root");
     protected File settingsFile;
     protected List<Column> columnList;
     protected int pageWidth;

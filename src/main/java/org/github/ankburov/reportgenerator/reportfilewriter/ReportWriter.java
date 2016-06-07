@@ -1,41 +1,68 @@
 package org.github.ankburov.reportgenerator.reportfilewriter;
 
 import org.github.ankburov.reportgenerator.settingshandler.Column;
-import org.github.ankburov.reportgenerator.sourcereporthandler.AbstractSourceReportReader;
 
+import java.io.*;
 import java.util.*;
 
 /**
  * Implementation of AbstractReportWriter
  */
 public class ReportWriter extends AbstractReportWriter {
+    private BufferedWriter bufferedWriter;
     private String header;
     private String delimiter;
-    private int rowCount;
+    private int rowCount;   // pagination count
 
     public ReportWriter() {
         this.rowCount = 0;
     }
 
     /**
-     * Method that generates report
+     * Method that generates report and writes it in the file
+     *
+     * @param list two-dimensional list. Represents source report file in memory. Each List<String> is a row
      */
     @Override
     public void generateReport(List<List<String>> list) {
-        generateHeader(settingsReader.getColumnList());
-        generateDelimiter(header);
-
-        System.out.println(header);
-        rowCount++;
-
-        for (List<String> strings : list) {
-            printTableRow(header, strings, settingsReader.getColumnList());
+        try {
+            if (!reportFile.exists()) {
+                reportFile.createNewFile();
+            }
+            bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(reportFile, true), "UTF-16"));
+            generateHeader(settingsReader.getColumnList());
+            generateDelimiter(header);
+            // write header into report file
+            bufferedWriter.append(header);
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
+            rowCount++;
+            // iterate list (source report). Each List<String> strings is a row
+            for (List<String> strings : list) {
+                // write row to the report file
+                printTableRow(header, strings, settingsReader.getColumnList());
+            }
+            // write in log that writing is successful
+            logger.info("Writing or report file is successful");
+        } catch (UnsupportedEncodingException e) {
+            logger.error(e.getMessage(), e);
+        } catch (FileNotFoundException e) {
+            logger.error(e.getMessage(), e);
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        } finally {
+            try {
+                bufferedWriter.close();
+            } catch (IOException e) {
+                logger.error(e.getMessage(), e);
+            }
         }
-
     }
 
     /**
      * Method that generates header and stores it in as a class field "header"
+     *
+     * @param columns list of columns
      */
     private void generateHeader(List<Column> columns) {
         StringBuilder headerBuilder = new StringBuilder();
@@ -45,17 +72,20 @@ public class ReportWriter extends AbstractReportWriter {
             headerBuilder.append("| %-");
             headerBuilder.append(column.getWidth());
             headerBuilder.append("s ");
-            // add an argument to header array
+            // add an argument to header list arg
             headerArgs.add(column.getTitle());
         }
         headerBuilder.append("|");
         header = String.format(headerBuilder.toString(), headerArgs.toArray());
         if (header.length() > settingsReader.getPageWidth()) {
-            throw new RuntimeException("Не помещается");
+            throw new RuntimeException("Summary column length " + header.length() + " " +
+                    "(with boundaries) is longer than page width");
         }
     }
 
-    /** Method that generates delimiter from header's length and stores it in as a class field "delimiter"*/
+    /**
+     * Method that generates delimiter from header's length and stores it in as a class field "delimiter"
+     */
     private void generateDelimiter(String header) {
         StringBuilder delimiterBuilder = new StringBuilder();
         for (int i = 0; i < header.length(); i++) {
@@ -64,23 +94,28 @@ public class ReportWriter extends AbstractReportWriter {
         delimiter = delimiterBuilder.toString();
     }
 
-    private void printTableRow(String header, List<String> strings, List<Column> columns) {
+    /**
+     * Method writes row to the report file
+     *
+     * @param header  header field
+     * @param strings list that represents row of table
+     * @param columns list of columns
+     */
+    private void printTableRow(String header, List<String> strings, List<Column> columns) throws IOException {
         //print delimiter
-        System.out.println(delimiter);
+        bufferedWriter.append(delimiter);
+        bufferedWriter.newLine();
+        bufferedWriter.flush();
         rowCount++;
-
-        // лист строчек
+        // list with formatted row
         List<List<String>> rowList = new ArrayList<>();
         for (int i = 0; i < columns.size(); i++) {
+            // get formatted row
             rowList.add(getFormattedStrings(new ArrayList<>(), strings.get(i), columns.get(i).getWidth()));
         }
-
-//        System.out.println(rowList);
-
-        //max
+        // find longest column in a row
         List<String> longestString = findLongestString(rowList);
-
-        // print
+        // write formatted row to the report file
         for (int i = 0; i < longestString.size(); i++) {
             StringBuilder stringFormatBuilder = new StringBuilder();
             List<String> stringFormatArgs = new ArrayList<>();
@@ -89,65 +124,37 @@ public class ReportWriter extends AbstractReportWriter {
                 stringFormatBuilder.append("| %-");
                 stringFormatBuilder.append(column.getWidth());
                 stringFormatBuilder.append("s ");
-                // add an argument to header array
-//                stringFormatArgs.add(column.getTitle());
-
-                //todo индекс для роулиста?
+                // add an argument to header argument list
                 for (List<String> stringList : rowList) {
                     stringFormatArgs.add(getString((stringList), i));
 
                 }
-
             }
-            stringFormatBuilder.append("|");
-
+            stringFormatBuilder.append("|"); // right boundary of a row
             rowCount++;
+            // check current page height exceeded set page height
             if (rowCount > settingsReader.getPageHeight()) {
-                System.out.println("~");
-                System.out.println(header);
-                System.out.println(delimiter);
-                rowCount = 2;
+                bufferedWriter.append("~");
+                bufferedWriter.newLine();
+                bufferedWriter.append(header);
+                bufferedWriter.newLine();
+                bufferedWriter.append(delimiter);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+                rowCount = 2; // 2 because of header and delimiter
             }
-
-            System.out.println(String.format(stringFormatBuilder.toString(), stringFormatArgs.toArray()));
+            bufferedWriter.append(String.format(stringFormatBuilder.toString(), stringFormatArgs.toArray()));
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
         }
-
-
-
-        /*for (int i = 0; i < longestString.size(); i++) {
-            String number = getString(rowList.get(0), i);
-
-            String date = getString(rowList.get(1), i);
-
-            String name = getString(rowList.get(2), i);
-
-            String row = String.format("| %-" + columns.get(0).getWidth() + "s | %-" + columns.get(0).getWidth() + "s | " +
-                    "%-" + columns.get(2).getWidth() + "s |", number, date, name);
-            System.out.println(row);
-        }*/
-
-        /*for (int i = 0; i < rowList.get(0).size() || i <  rowList.get(1).size() || i <  rowList.get(2).size(); i++) {
-            String number = getString(rowList.get(0), i);
-
-            String date = getString(rowList.get(1), i);
-
-            String name = getString(rowList.get(2), i);
-
-            String row = String.format("| %-" + columns.get(0).getWidth() + "s | %-" + columns.get(0).getWidth() + "s | " +
-                    "%-" + columns.get(2).getWidth() + "s |", number, date, name);
-            System.out.println(row);
-
-            // increment row counter
-//            ROW_COUNT++;
-//            if (ROW_COUNT > MAX_HEIGHT) {
-//                System.out.println("~");
-//                printHeader(header);
-//                ROW_COUNT = 0;
-//            }
-
-        }*/
     }
 
+    /**
+     * Method finds longest column in a row
+     *
+     * @param rowList list with formatted row
+     * @return longest column in a row
+     */
     private List<String> findLongestString(List<List<String>> rowList) {
         return Collections.max(rowList, new Comparator<List<String>>() {
             @Override
@@ -163,6 +170,13 @@ public class ReportWriter extends AbstractReportWriter {
         });
     }
 
+    /**
+     * Method returns string of list. If list doesn't contain this element, method returns ""
+     *
+     * @param list list with column content in a row
+     * @param i    index of element
+     * @return String with content of the list's element or ""
+     */
     private String getString(List<String> list, int i) {
         String string;
         string = "";
@@ -173,24 +187,32 @@ public class ReportWriter extends AbstractReportWriter {
         return string;
     }
 
-    private List<String> getFormattedStrings(List<String> strings, String string, int MAX_NUMBER) {
-        int arrayLength = (int) Math.ceil((float) string.length() / (float) MAX_NUMBER);
-        for (int i = 0; i < arrayLength; i++) {
-            if (string.length() > MAX_NUMBER - 1) {
-                strings.add(string.substring(0, MAX_NUMBER));
+    /**
+     * Method formats input row and returns formatted (with column length breakdown) row
+     *
+     * @param strings         non-formatted raw row
+     * @param string          content of column
+     * @param maxColumnLength maximum length of this column
+     * @return formatted row
+     */
+    private List<String> getFormattedStrings(List<String> strings, String string, int maxColumnLength) {
+        // calculate actual row height with formatted content
+        int actualRowHeight = (int) Math.ceil((float) string.length() / (float) maxColumnLength);
+        for (int i = 0; i < actualRowHeight; i++) {
+            if (string.length() > maxColumnLength - 1) {
+                strings.add(string.substring(0, maxColumnLength));
             } else {
                 strings.add(string.substring(0, string.length()));
             }
-
+            // chop parsed length from string
             StringBuilder nameBuilder = new StringBuilder(string);
-            for (int j = 0; j < MAX_NUMBER; j++) {
+            for (int j = 0; j < maxColumnLength; j++) {
                 if (nameBuilder.length() > 1) {
                     nameBuilder.deleteCharAt(0);
                 } else {
                     break;
                 }
             }
-
             string = nameBuilder.toString();
         }
         return strings;

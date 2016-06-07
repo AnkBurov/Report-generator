@@ -17,7 +17,6 @@ import javax.xml.validation.Validator;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Implementation of AbstractSettingsReader
@@ -36,9 +35,7 @@ public class SettingsReader extends AbstractSettingsReader {
         String language = XMLConstants.W3C_XML_SCHEMA_NS_URI;
         SchemaFactory factory = SchemaFactory.newInstance(language);
         schema = factory.newSchema(new File("settings.xsd"));
-
         Validator validator = schema.newValidator();
-
         validator.validate(new DOMSource(document));
     }
 
@@ -53,8 +50,6 @@ public class SettingsReader extends AbstractSettingsReader {
         //validate XML scheme
         validateScheme(document);
         Element root = document.getDocumentElement();
-
-        //todo сделать обработку исключений парсинга
         // seek for page tag
         NodeList pageTag = root.getElementsByTagName("page");
         // get child nodes and iterate them
@@ -66,12 +61,9 @@ public class SettingsReader extends AbstractSettingsReader {
                 pageHeight = Integer.parseInt(pageChildTag.item(i).getTextContent());
             }
         }
-
-        //todo сделать через фабрику
-        //todo убрать columns и переделать
         // seek for columns tag list
         NodeList columns = root.getElementsByTagName("columns");
-        // check if there is only columns tag
+        // parse columns
         NodeList columnTag = columns.item(0).getChildNodes();
         for (int i = 0; i < columnTag.getLength(); i++) {
             if (columnTag.item(i).getNodeType() == Node.ELEMENT_NODE) {
@@ -90,17 +82,7 @@ public class SettingsReader extends AbstractSettingsReader {
                 columnList.add(new Column(columnTitle, columnWidth));
             }
         }
-    }
-
-
-    //todo убрать
-
-    @Override
-    public String toString() {
-        return "SettingsReader{" +
-                "columnList=" + columnList +
-                ", pageWidth=" + pageWidth +
-                ", pageHeight=" + pageHeight +
-                '}';
+        logger.info("Page width is " + pageWidth + " and page height is " + pageHeight);
+        logger.info("Number of expected columns is " + columnList.size());
     }
 }

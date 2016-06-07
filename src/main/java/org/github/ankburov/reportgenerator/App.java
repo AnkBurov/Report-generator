@@ -11,12 +11,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-
-//todo попробовать проверить через схему проверщик хмлник
-/** Class with main programm sequence*/
+/**
+ * Class with main program sequence
+ */
 public class App {
     private File settingsFile;
     private File sourceReport;
+    private File reportFile;
     @Autowired
     private AbstractSettingsReader settingsReader;
     @Autowired
@@ -35,15 +36,18 @@ public class App {
         this.sourceReport = sourceReport;
     }
 
+    public void setReportFile(File reportFile) {
+        this.reportFile = reportFile;
+    }
+
     public void doProgram() throws IOException, SAXException, ParserConfigurationException {
         settingsReader.setSettingsFile(settingsFile);
         settingsReader.readSettings();
-        System.out.println(settingsReader.toString());
 
         reportReader.setSourceFile(sourceReport);
         List<List<String>> list = reportReader.readSourceReport();
-        System.out.println(list);
 
+        reportWriter.setReportFile(reportFile);
         reportWriter.generateReport(list);
     }
 }
