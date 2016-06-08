@@ -12,7 +12,6 @@
 *.log
 
 *.xsl
-*.xsd
 *.txt
 *.csv
 settings.xml
